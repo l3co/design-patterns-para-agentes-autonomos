@@ -2,86 +2,86 @@ from typing import TypedDict
 from langgraph.graph import StateGraph, END
 
 from reflection import (
-    generate_initial_response,
-    evaluate_response,
-    refine_response
+    gerar_resposta_inicial,
+    avaliar_resposta,
+    refinar_resposta
 )
 
 
-class ReflectionState(TypedDict):
-    question: str
-    answer: str
-    reviews: list[dict]
-    iterations: int
-    approved: bool
+class EstadoReflexao(TypedDict):
+    pergunta: str
+    resposta: str
+    avaliacoes: list[dict]
+    iteracoes: int
+    aprovado: bool
 
 
-def generate_node(state: ReflectionState) -> dict:
-    # Initial generation on the first pass
-    if state["iterations"] == 0:
-        answer = generate_initial_response(state["question"])
-    # Refine the existing response using the latest review
+def no_gerador(state: EstadoReflexao) -> dict:
+    # Geração inicial na primeira passagem
+    if state["iteracoes"] == 0:
+        resposta = gerar_resposta_inicial(state["pergunta"])
+    # Refinar a resposta existente usando a última avaliação
     else:
-        last_review = state["reviews"][-1]
-        answer = refine_response(
-            state["question"],
-            state["answer"],
-            last_review
+        ultima_avaliacao = state["avaliacoes"][-1]
+        resposta = refinar_resposta(
+            state["pergunta"],
+            state["resposta"],
+            ultima_avaliacao
         )
 
-    # Return key 'answer' to match the ReflectionState schema
+    # Retornar a chave 'resposta' para corresponder ao esquema EstadoReflexao
     return {
-        "answer": answer,
-        "iterations": state["iterations"] + 1
+        "resposta": resposta,
+        "iteracoes": state["iteracoes"] + 1
     }
 
 
-def evaluate_node(state: ReflectionState) -> dict:
-    review = evaluate_response(
-        state["question"],
-        state["answer"]
+def no_avaliador(state: EstadoReflexao) -> dict:
+    avaliacao = avaliar_resposta(
+        state["pergunta"],
+        state["resposta"]
     )
 
-    # Append new review and update the approved flag
+    # Anexar nova avaliação e atualizar a flag de aprovação
     return {
-        "reviews": state["reviews"] + [review],
-        "approved": review.get("approved", False)
+        "avaliacoes": state["avaliacoes"] + [avaliacao],
+        "aprovado": avaliacao.get("aprovado", False)
     }
 
 
-def should_continue(state: ReflectionState) -> str:
-    # Stop condition: approved or reached maximum iterations
-    if state["approved"] or state["iterations"] >= 3:
+def deve_continuar(state: EstadoReflexao) -> str:
+    # Condição de parada: aprovado ou atingiu o número máximo de iterações
+    if state["aprovado"] or state["iteracoes"] >= 3:
         return END
-    # Route back to the generator node
-    return "generator"
+    # Rota de volta para o nó gerador
+    return "gerador"
 
 
-# Graph Definition
-graph = StateGraph(ReflectionState)
+# Definição do Grafo
+grafo = StateGraph(EstadoReflexao)
 
-graph.add_node("generator", generate_node)
-graph.add_node("evaluator", evaluate_node)
+grafo.add_node("gerador", no_gerador)
+grafo.add_node("avaliador", no_avaliador)
 
-graph.set_entry_point("generator")
+grafo.set_entry_point("gerador")
 
-graph.add_edge("generator", "evaluator")
-graph.add_conditional_edges("evaluator", should_continue)
+grafo.add_edge("gerador", "avaliador")
+grafo.add_conditional_edges("avaliador", deve_continuar)
 
-app = graph.compile()
+app = grafo.compile()
 
 
 if __name__ == "__main__":
-    initial_state: ReflectionState = {
-        "question": "Explain the concept of RAG and give me some examples, but remember I'm a child",
-        "answer": "",
-        "reviews": [],
-        "iterations": 0,
-        "approved": False
+    estado_inicial: EstadoReflexao = {
+        "pergunta": "Explique o conceito de RAG e me dê alguns exemplos, mas lembre-se que eu sou uma criança",
+        "resposta": "",
+        "avaliacoes": [],
+        "iteracoes": 0,
+        "aprovado": False
     }
 
-    result = app.invoke(initial_state)
+    resultado = app.invoke(estado_inicial)
 
-    print(f"Final Approval Status: {result['approved']}")
-    print(f"Total Iterations: {result['iterations']}")
-    print("\nFinal Answer:\n", result["answer"])
+    print(f"Status Final de Aprovação: {resultado['aprovado']}")
+    print(f"Total de Iterações: {resultado['iteracoes']}")
+    print("\nResposta Final:\n", resultado["resposta"])

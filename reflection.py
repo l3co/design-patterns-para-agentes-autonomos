@@ -2,80 +2,80 @@ import json
 import os
 from openai import OpenAI
 
-client = OpenAI(
+cliente = OpenAI(
     api_key=os.environ.get("OPENAI_API_KEY"),
 )
 
 
-def generate_initial_response(question: str) -> str:
-    response = client.chat.completions.create(
+def gerar_resposta_inicial(pergunta: str) -> str:
+    resposta = cliente.chat.completions.create(
         model="gpt-5.4-mini",
         messages=[
-            {"role": "system", "content": "You are a senior data analyst"},
-            {"role": "user", "content": question},
+            {"role": "system", "content": "Você é um analista de dados sênior"},
+            {"role": "user", "content": pergunta},
         ],
     )
-    return response.choices[0].message.content or ""
+    return resposta.choices[0].message.content or ""
 
 
-def evaluate_response(question: str, current_response: str) -> dict:
-    evaluation_prompt = f"""
-    You are a senior technical reviewer. Analyze the answer below:
+def avaliar_resposta(pergunta: str, resposta_atual: str) -> dict:
+    prompt_avaliacao = f"""
+    Você é um revisor técnico sênior. Analise a resposta abaixo:
 
-    Original Question: {question}
-    Current Response: {current_response}
+    Pergunta Original: {pergunta}
+    Resposta Atual: {resposta_atual}
 
-    Return in JSON: 
-    - "approved" (true/false)
-    - "problems" (a list of concerns about the answer)
-    - "suggestions" (a list of suggestions to improve the answer)
+    Retorne em JSON: 
+    - "aprovado" (true/false)
+    - "problemas" (uma lista de preocupações sobre a resposta)
+    - "sugestoes" (uma lista de sugestões para melhorar a resposta)
     """
 
-    response = client.chat.completions.create(
+    resposta = cliente.chat.completions.create(
         model="gpt-5.5",
-        messages=[{"role": "user", "content": evaluation_prompt}],
+        messages=[{"role": "user", "content": prompt_avaliacao}],
         response_format={"type": "json_object"},
     )
 
-    return json.loads(response.choices[0].message.content or "{}")
+    return json.loads(resposta.choices[0].message.content or "{}")
 
 
-def refine_response(question: str, current_response: str, evaluation: dict) -> str:
-    refinement_prompt = f"""
-    Some issues were raised regarding your response. Rewrite it, correcting all the issues pointed out. 
+def refinar_resposta(pergunta: str, resposta_atual: str, avaliacao: dict) -> str:
+    prompt_refinamento = f"""
+    Alguns problemas foram levantados em relação à sua resposta. Reescreva-a, corrigindo todos os problemas apontados. 
 
-    Original Question: {question}    
-    Current Response: {current_response}
-    Problems: {evaluation.get('problems', [])}
-    Suggestions: {evaluation.get('suggestions', [])}
+    Pergunta Original: {pergunta}    
+    Resposta Atual: {resposta_atual}
+    Problemas: {avaliacao.get('problemas', [])}
+    Sugestões: {avaliacao.get('sugestoes', [])}
     """
 
-    response = client.chat.completions.create(
+    resposta = cliente.chat.completions.create(
         model="gpt-5.5",
-        messages=[{"role": "user", "content": refinement_prompt}],
+        messages=[{"role": "user", "content": prompt_refinamento}],
     )
 
-    return response.choices[0].message.content or ""
+    return resposta.choices[0].message.content or ""
 
 
-def run_reflection_agent(question: str, max_iterations: int = 3) -> str:
-    current_response = generate_initial_response(question)
+def executar_agente_reflexao(pergunta: str, max_iteracoes: int = 3) -> str:
+    resposta_atual = gerar_resposta_inicial(pergunta)
 
-    for iteration in range(max_iterations):
-        evaluation = evaluate_response(question, current_response)
+    for iteracao in range(max_iteracoes):
+        avaliacao = avaliar_resposta(pergunta, resposta_atual)
 
-        if evaluation.get("approved"):
-            print(f"Approved at iteration {iteration + 1}")
-            return current_response
+        if avaliacao.get("aprovado"):
+            print(f"Aprovado na iteração {iteracao + 1}")
+            return resposta_atual
 
-        print(f"Refining at iteration {iteration + 1}")
-        current_response = refine_response(question, current_response, evaluation)
+        print(f"Refinando na iteração {iteracao + 1}")
+        resposta_atual = refinar_resposta(pergunta, resposta_atual, avaliacao)
 
-    return current_response
+    return resposta_atual
 
 
 if __name__ == "__main__":
-    result = run_reflection_agent(
-        "Explain the concept of RAG and give me some examples, but remember I'm a child"
+    resultado = executar_agente_reflexao(
+        "Explique o conceito de RAG e me dê alguns exemplos, mas lembre-se que eu sou uma criança"
     )
-    print(result)
+    print(resultado)
